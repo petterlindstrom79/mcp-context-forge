@@ -3928,7 +3928,11 @@ class ToolService(BaseService):
                             # First-Party
                             from mcpgateway.services.metrics import tool_timeout_counter  # pylint: disable=import-outside-toplevel
 
-                            tool_timeout_counter.labels(tool_name=name).inc()
+                            # Conditionally include server_id label if feature is enabled and server_id is available
+                            if settings.prometheus_server_scoped_metrics and server_id:
+                                tool_timeout_counter.labels(tool_name=name, server_id=server_id).inc()
+                            else:
+                                tool_timeout_counter.labels(tool_name=name).inc()
                         except Exception as exc:
                             logger.debug(
                                 "Failed to increment tool_timeout_counter for %s: %s",
@@ -4252,7 +4256,11 @@ class ToolService(BaseService):
                                 # First-Party
                                 from mcpgateway.services.metrics import tool_timeout_counter  # pylint: disable=import-outside-toplevel
 
-                                tool_timeout_counter.labels(tool_name=name).inc()
+                                # Conditionally include server_id label if feature is enabled and server_id is available
+                                if settings.prometheus_server_scoped_metrics and server_id:
+                                    tool_timeout_counter.labels(tool_name=name, server_id=server_id).inc()
+                                else:
+                                    tool_timeout_counter.labels(tool_name=name).inc()
                             except Exception as exc:
                                 logger.debug(
                                     "Failed to increment tool_timeout_counter for %s: %s",
@@ -4391,7 +4399,11 @@ class ToolService(BaseService):
                                 # First-Party
                                 from mcpgateway.services.metrics import tool_timeout_counter  # pylint: disable=import-outside-toplevel
 
-                                tool_timeout_counter.labels(tool_name=name).inc()
+                                # Conditionally include server_id label if feature is enabled and server_id is available
+                                if settings.prometheus_server_scoped_metrics and server_id:
+                                    tool_timeout_counter.labels(tool_name=name, server_id=server_id).inc()
+                                else:
+                                    tool_timeout_counter.labels(tool_name=name).inc()
                             except Exception as exc:
                                 logger.debug(
                                     "Failed to increment tool_timeout_counter for %s: %s",
