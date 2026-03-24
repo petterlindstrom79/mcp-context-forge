@@ -1332,13 +1332,17 @@ function safeGetElement(id, suppressWarning = false) {
  */
 function ensureNoResultsElement(containerId, msgId, spanId, entityLabel) {
     let msg = document.getElementById(msgId);
-    let span = document.getElementById(spanId);
     if (msg) {
-        // Element already in the DOM – just return references
-        if (!span) {
-            span = msg.querySelector("span");
-        }
-        return { msg, span };
+        // Scope span lookup to inside msg, not global, to avoid returning a
+        // stale element from another part of the DOM that happens to share the id
+        const span = document.getElementById(spanId);
+        return { msg, span: span && msg.contains(span) ? span : msg.querySelector("span") };
+    }
+    // Remove any stale element with the target spanId before creating new
+    // elements, to prevent duplicate id attributes in the DOM
+    const staleSpan = document.getElementById(spanId);
+    if (staleSpan) {
+        staleSpan.removeAttribute("id");
     }
     // Create the message element dynamically
     const container = document.getElementById(containerId);
@@ -1349,7 +1353,7 @@ function ensureNoResultsElement(containerId, msgId, spanId, entityLabel) {
     msg.id = msgId;
     msg.className = "text-gray-700 dark:text-gray-300 mt-2";
     msg.style.display = "none";
-    span = document.createElement("span");
+    const span = document.createElement("span");
     span.id = spanId;
     msg.appendChild(
         document.createTextNode(`No ${entityLabel} found containing \u201C`),
