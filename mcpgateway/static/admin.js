@@ -1336,7 +1336,10 @@ function ensureNoResultsElement(containerId, msgId, spanId, entityLabel) {
         // Scope span lookup to inside msg, not global, to avoid returning a
         // stale element from another part of the DOM that happens to share the id
         const span = document.getElementById(spanId);
-        return { msg, span: span && msg.contains(span) ? span : msg.querySelector("span") };
+        return {
+            msg,
+            span: span && msg.contains(span) ? span : msg.querySelector("span"),
+        };
     }
     // Remove any stale element with the target spanId before creating new
     // elements, to prevent duplicate id attributes in the DOM
