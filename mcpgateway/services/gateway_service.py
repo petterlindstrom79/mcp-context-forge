@@ -1449,6 +1449,18 @@ class GatewayService(BaseService):  # pylint: disable=too-many-instance-attribut
             for warning in token_validation.warnings:
                 logger.warning("OAuth token validation for gateway %s: %s", gateway.name, warning)
 
+            # Fail fast if any claim is definitively mismatched (present but wrong).
+            # Claims that are simply absent from the token produce None (not False)
+            # and are NOT blocked — this preserves backward compat with legacy IdPs.
+            blocking = token_validation.blocking_errors
+            if blocking:
+                detail = "; ".join(blocking)
+                raise GatewayConnectionError(
+                    f"Refusing to forward OAuth token for gateway '{gateway.name}': "
+                    f"{detail}. "
+                    f"Fix oauth_config (resource/scopes/issuer) or the IdP token request."
+                )
+
             # Now connect to MCP server with the access token
             authentication = {"Authorization": f"Bearer {access_token}"}
 

@@ -36,6 +36,72 @@ class TestTokenValidationResult:
         assert r.issuer_match is None
         assert r.token_type_valid is None
 
+    def test_blocking_errors_empty_when_no_warnings(self):
+        r = TokenValidationResult(is_jwt=True)
+        assert r.blocking_errors == []
+
+    def test_blocking_errors_none_flags_are_not_blocking(self):
+        """Missing claims (None) must NOT produce blocking errors."""
+        r = TokenValidationResult(is_jwt=True)
+        r.audience_match = None
+        r.scopes_sufficient = None
+        r.issuer_match = None
+        assert r.blocking_errors == []
+
+    def test_blocking_errors_true_flags_are_not_blocking(self):
+        """Matching claims (True) must NOT produce blocking errors."""
+        r = TokenValidationResult(is_jwt=True)
+        r.audience_match = True
+        r.scopes_sufficient = True
+        r.issuer_match = True
+        assert r.blocking_errors == []
+
+    def test_blocking_errors_audience_mismatch(self):
+        r = TokenValidationResult(is_jwt=True)
+        r.audience_match = False
+        r.warnings.append("Token audience mismatch: token aud=[api://wrong], expected 'api://correct'")
+        errors = r.blocking_errors
+        assert len(errors) == 1
+        assert "audience" in errors[0].lower()
+
+    def test_blocking_errors_scope_mismatch(self):
+        r = TokenValidationResult(is_jwt=True)
+        r.scopes_sufficient = False
+        r.warnings.append("Token may be missing required scopes: [write]")
+        errors = r.blocking_errors
+        assert len(errors) == 1
+        assert "scope" in errors[0].lower()
+
+    def test_blocking_errors_issuer_mismatch(self):
+        r = TokenValidationResult(is_jwt=True)
+        r.issuer_match = False
+        r.warnings.append("Token issuer mismatch: token iss='https://wrong.com', expected 'https://right.com'")
+        errors = r.blocking_errors
+        assert len(errors) == 1
+        assert "issuer" in errors[0].lower()
+
+    def test_blocking_errors_multiple_mismatches(self):
+        r = TokenValidationResult(is_jwt=True)
+        r.audience_match = False
+        r.scopes_sufficient = False
+        r.issuer_match = False
+        r.warnings = [
+            "Token audience mismatch: token aud=[wrong], expected 'right'",
+            "Token may be missing required scopes: [write]",
+            "Token issuer mismatch: token iss='wrong', expected 'right'",
+        ]
+        assert len(r.blocking_errors) == 3
+
+    def test_blocking_errors_only_false_not_none(self):
+        """audience_match=False blocks; scopes_sufficient=None does NOT."""
+        r = TokenValidationResult(is_jwt=True)
+        r.audience_match = False
+        r.scopes_sufficient = None  # absent claim — must not block
+        r.warnings.append("Token audience mismatch: token aud=[wrong], expected 'right'")
+        errors = r.blocking_errors
+        assert len(errors) == 1
+        assert "audience" in errors[0].lower()
+
 
 # ---------- _derive_issuer_from_token_url ----------
 

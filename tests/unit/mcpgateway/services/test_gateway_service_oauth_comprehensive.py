@@ -699,8 +699,8 @@ class TestFetchToolsAfterOauthTokenValidation:
     """Tests that token claim validation is called and warnings flow through."""
 
     @pytest.mark.asyncio
-    async def test_audience_mismatch_logs_warning(self, gateway_service, mock_oauth_auth_code_gateway, test_db):
-        """Token with audience mismatch logs a warning but still attempts connection."""
+    async def test_audience_mismatch_blocks_before_connection(self, gateway_service, mock_oauth_auth_code_gateway, test_db):
+        """Token with audience mismatch is blocked BEFORE the network call is made."""
         # Third-Party
         import jwt as pyjwt
 
@@ -717,14 +717,11 @@ class TestFetchToolsAfterOauthTokenValidation:
             mock_tss_inst.get_user_token = AsyncMock(return_value=token)
             mock_connect.return_value = ({}, [], [], [])
 
-            await gateway_service.fetch_tools_after_oauth(test_db, "gw-id", "user@example.com")
+            with pytest.raises(GatewayConnectionError, match="audience"):
+                await gateway_service.fetch_tools_after_oauth(test_db, "gw-id", "user@example.com")
 
-            # Verify connection was still attempted
-            mock_connect.assert_called_once()
-            # Verify validation_warnings was passed to the connection method
-            _, kwargs = mock_connect.call_args
-            assert "validation_warnings" in kwargs
-            assert any("audience mismatch" in w.lower() for w in kwargs["validation_warnings"])
+            # Connection must NOT have been attempted — error raised before network call
+            mock_connect.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_opaque_token_no_warnings(self, gateway_service, mock_oauth_auth_code_gateway, test_db):
