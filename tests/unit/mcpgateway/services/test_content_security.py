@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """Unit tests for content security service."""
 
+import sys
+import threading
 import pytest
 import mcpgateway.services.content_security as cs_mod
 from unittest.mock import patch, MagicMock
 
+from mcpgateway import config
 from mcpgateway.services.content_security import (
     ContentSecurityService,
     ContentSizeError,
@@ -213,8 +216,6 @@ class TestGetContentSecurityService:
 
     def test_get_service_thread_safe(self):
         """Test that singleton is thread-safe."""
-        import threading
-
         results = []
 
         def get_service():
@@ -327,7 +328,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_allowed_mime_type(self, monkeypatch):
         """Test validation passes for allowed MIME types."""
-        from mcpgateway import config
         # Ensure strict mode is off so this test is independent of .env settings
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", False)
         service = ContentSecurityService()
@@ -339,7 +339,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_vendor_mime_type_log_only_mode(self, monkeypatch):
         """Test that vendor types (x- prefix) are allowed in log-only mode."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", False)
 
         service = ContentSecurityService()
@@ -349,7 +348,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_vendor_mime_type_strict_mode(self, monkeypatch):
         """Test that vendor types (x- prefix) are rejected in strict mode unless in allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain"])
 
@@ -365,7 +363,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_suffix_mime_type_log_only_mode(self, monkeypatch):
         """Test that suffix types (with +) are allowed in log-only mode."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", False)
 
         service = ContentSecurityService()
@@ -375,7 +372,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_suffix_mime_type_strict_mode(self, monkeypatch):
         """Test that suffix types (with +) are rejected in strict mode unless in allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain"])
 
@@ -392,7 +388,6 @@ class TestValidateResourceMimeType:
     def test_validate_disallowed_mime_type_strict_mode(self, monkeypatch):
         """Test validation fails for disallowed MIME types in strict mode."""
         # Enable strict validation
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
 
         service = ContentSecurityService()
@@ -406,7 +401,6 @@ class TestValidateResourceMimeType:
     def test_validate_disallowed_mime_type_log_only_mode(self, monkeypatch):
         """Test validation logs but doesn't raise in log-only mode."""
         # Disable strict validation (log-only mode)
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", False)
 
         service = ContentSecurityService()
@@ -415,7 +409,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_with_logging_context(self, monkeypatch):
         """Test validation with full logging context."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
 
         service = ContentSecurityService()
@@ -429,7 +422,6 @@ class TestValidateResourceMimeType:
 
     def test_validate_case_sensitive(self, monkeypatch):
         """Test that MIME type validation is case-sensitive."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
 
         service = ContentSecurityService()
@@ -447,7 +439,6 @@ class TestMimeTypeIntegration:
 
     def test_size_and_mime_validation_order(self, monkeypatch):
         """Test that size validation happens before MIME validation."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
 
         service = ContentSecurityService()
@@ -473,7 +464,6 @@ class TestVendorSuffixMimeTypeInStrictMode:
 
     def test_vendor_type_rejected_in_strict_mode_without_allowlist(self, monkeypatch):
         """Test that application/x- vendor types are rejected in strict mode if not in allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         # Use a custom allowlist that does NOT include application/x-custom
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain"])
@@ -486,7 +476,6 @@ class TestVendorSuffixMimeTypeInStrictMode:
 
     def test_vendor_type_allowed_when_in_allowlist(self, monkeypatch):
         """Test that vendor types pass when explicitly added to allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         # Add vendor type to allowlist
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain", "application/x-custom"])
@@ -497,7 +486,6 @@ class TestVendorSuffixMimeTypeInStrictMode:
 
     def test_text_vendor_type_rejected_in_strict_mode_without_allowlist(self, monkeypatch):
         """Test that text/x- vendor types are rejected in strict mode if not in allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["application/json"])
 
@@ -509,7 +497,6 @@ class TestVendorSuffixMimeTypeInStrictMode:
 
     def test_suffix_type_rejected_in_strict_mode_without_allowlist(self, monkeypatch):
         """Test that suffix types (+json, +xml) are rejected in strict mode if not in allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain"])
 
@@ -521,7 +508,6 @@ class TestVendorSuffixMimeTypeInStrictMode:
 
     def test_suffix_type_allowed_when_in_allowlist(self, monkeypatch):
         """Test that suffix types pass when explicitly added to allowlist."""
-        from mcpgateway import config
         monkeypatch.setattr(config.settings, "content_strict_mime_validation", True)
         # Add suffix type to allowlist
         monkeypatch.setattr(config.settings, "content_allowed_resource_mimetypes", ["text/plain", "application/vnd.api+json"])
@@ -554,8 +540,6 @@ class TestNoOpCounterFallback:
 
     def test_noop_counter_import_fallback(self):
         """Test that content_security module handles missing metrics gracefully (line 26)."""
-        import sys
-
         # Temporarily hide the metrics module to trigger the ImportError fallback
         original_metrics = sys.modules.get("mcpgateway.services.metrics")
         original_cs = sys.modules.get("mcpgateway.services.content_security")
