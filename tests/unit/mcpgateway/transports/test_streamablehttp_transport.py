@@ -30,7 +30,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # Third-Party
 from fastapi import HTTPException
 import httpx
-from mcp.types import PromptArgument
 import pytest
 from starlette.types import Scope
 
@@ -38,6 +37,7 @@ from starlette.types import Scope
 # ---------------------------------------------------------------------------
 # Import module under test - we only need the specific classes / functions
 # ---------------------------------------------------------------------------
+from mcpgateway.schemas import PromptArgument
 from mcpgateway.services.oauth_manager import OAuthEnforcementUnavailableError, OAuthRequiredError
 from mcpgateway.transports import streamablehttp_transport as tr  # noqa: E402
 from mcpgateway.transports.streamablehttp_transport import (
@@ -766,7 +766,7 @@ async def test_list_prompts_with_server_id(monkeypatch):
     mock_prompt = MagicMock()
     mock_prompt.name = "prompt1"
     mock_prompt.description = "test prompt"
-    mock_prompt.arguments = [PromptArgument(name="arg1", description="desc1", required=None)]
+    mock_prompt.arguments = [PromptArgument(name="arg1", description="desc1", required=True)]
 
     @asynccontextmanager
     async def fake_get_db():
@@ -789,6 +789,7 @@ async def test_list_prompts_with_server_id(monkeypatch):
     assert result[0].description == "test prompt"
     assert len(result[0].arguments) == 1
     assert result[0].arguments[0].name == "arg1"
+    assert result[0].arguments[0].required is True
 
 
 @pytest.mark.asyncio
