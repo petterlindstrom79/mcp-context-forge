@@ -752,19 +752,7 @@ Content size limits prevent DoS attacks and ensure system stability:
 | `CONTENT_MAX_RESOURCE_SIZE` | Maximum resource content size (bytes) | `102400` (100KB) |
 | `CONTENT_MAX_PROMPT_SIZE` | Maximum prompt template size (bytes) | `10240` (10KB) |
 
-**Note:** Existing content is not affected. See [Content Limits Migration Guide](docs/MIGRATION_CONTENT_LIMITS.md) for details.
-
-
-### 🛡️ Content Security
-
-Content size limits prevent DoS attacks and ensure system stability:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CONTENT_MAX_RESOURCE_SIZE` | Maximum resource content size (bytes) | `102400` (100KB) |
-| `CONTENT_MAX_PROMPT_SIZE` | Maximum prompt template size (bytes) | `10240` (10KB) |
-
-**Note:** Size limits apply only to new create/update operations. Existing content is not retroactively validated.
+**Note:** Size limits apply only to new create/update operations. Existing content is not retroactively validated. See [Content Limits Migration Guide](docs/MIGRATION_CONTENT_LIMITS.md) for details.
 
 ### ⚙️ Project Defaults (Dev Setup)
 
