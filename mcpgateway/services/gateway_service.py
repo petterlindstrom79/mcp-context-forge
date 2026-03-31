@@ -1455,11 +1455,7 @@ class GatewayService(BaseService):  # pylint: disable=too-many-instance-attribut
             blocking = token_validation.blocking_errors
             if blocking:
                 detail = "; ".join(blocking)
-                raise GatewayConnectionError(
-                    f"Refusing to forward OAuth token for gateway '{gateway.name}': "
-                    f"{detail}. "
-                    f"Fix oauth_config (resource/scopes/issuer) or the IdP token request."
-                )
+                raise GatewayConnectionError(f"Refusing to forward OAuth token for gateway '{gateway.name}': " f"{detail}. " f"Fix oauth_config (resource/scopes/issuer) or the IdP token request.")
 
             # Now connect to MCP server with the access token
             authentication = {"Authorization": f"Bearer {access_token}"}
