@@ -85,7 +85,7 @@ from mcpgateway.services.metrics_query_service import get_top_performers_combine
 from mcpgateway.services.oauth_manager import OAuthManager
 from mcpgateway.services.observability_service import current_trace_id, ObservabilityService
 from mcpgateway.services.performance_tracker import get_performance_tracker
-from mcpgateway.services.rust_a2a_runtime import RustA2ARuntimeError, get_rust_a2a_runtime_client
+from mcpgateway.services.rust_a2a_runtime import get_rust_a2a_runtime_client, RustA2ARuntimeError
 from mcpgateway.services.structured_logger import get_structured_logger
 from mcpgateway.services.team_management_service import TeamManagementService
 from mcpgateway.utils.correlation_id import get_correlation_id
@@ -4552,6 +4552,26 @@ class ToolService(BaseService):
 
                         raise ToolTimeoutError(f"Tool invocation timed out after {effective_timeout}s")
                     except RustA2ARuntimeError as e:
+                        if e.is_timeout:
+                            a2a_elapsed_ms = (time.time() - a2a_start_time) * 1000
+                            structured_logger.log(
+                                level="WARNING",
+                                message=f"A2A tool invocation timed out (Rust runtime): {name}",
+                                component="tool_service",
+                                correlation_id=get_correlation_id(),
+                                duration_ms=a2a_elapsed_ms,
+                                metadata={"event": "tool_timeout", "tool_name": name, "a2a_agent": a2a_agent_name, "timeout_seconds": effective_timeout},
+                            )
+                            try:
+                                # First-Party
+                                from mcpgateway.services.metrics import tool_timeout_counter  # pylint: disable=import-outside-toplevel
+
+                                tool_timeout_counter.labels(tool_name=name).inc()
+                            except Exception as exc:
+                                logger.debug("Failed to increment tool_timeout_counter for %s: %s", name, exc, exc_info=True)
+                            if self._plugin_manager:
+                                await self._run_timeout_post_invoke(name, effective_timeout, global_context, context_table)
+                            raise ToolTimeoutError(f"Tool invocation timed out after {effective_timeout}s")
                         status_code = 502
                         response_data = None
                         response_text = str(e)

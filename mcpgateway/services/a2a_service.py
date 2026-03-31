@@ -37,7 +37,7 @@ from mcpgateway.services.base_service import BaseService
 from mcpgateway.services.encryption_service import protect_oauth_config_for_storage
 from mcpgateway.services.logging_service import LoggingService
 from mcpgateway.services.metrics_cleanup_service import delete_metrics_in_batches, pause_rollup_during_purge
-from mcpgateway.services.rust_a2a_runtime import RustA2ARuntimeError, get_rust_a2a_runtime_client
+from mcpgateway.services.rust_a2a_runtime import get_rust_a2a_runtime_client, RustA2ARuntimeError
 from mcpgateway.services.structured_logger import get_structured_logger
 from mcpgateway.services.team_management_service import TeamManagementService
 from mcpgateway.utils.correlation_id import get_correlation_id
@@ -1533,7 +1533,7 @@ class A2AAgentService(BaseService):
                 )
             else:
                 raw_error = f"HTTP {status_code}: {response_text}"
-                error_message = sanitize_exception_message(raw_error, None)
+                error_message = sanitize_exception_message(raw_error, prepared.sensitive_query_param_names)
                 structured_logger.log(
                     level="ERROR",
                     message=f"A2A external call failed: {agent_name}",
@@ -1550,11 +1550,11 @@ class A2AAgentService(BaseService):
             # Re-raise A2AAgentError without wrapping
             raise
         except RustA2ARuntimeError as e:
-            error_message = sanitize_exception_message(str(e), None)
+            error_message = sanitize_exception_message(str(e), prepared.sensitive_query_param_names)
             logger.error(f"Rust A2A runtime failed for agent '{agent_name}': {error_message}")
             raise A2AAgentError(f"Failed to invoke A2A agent: {error_message}") from e
         except Exception as e:
-            error_message = sanitize_exception_message(str(e), None)
+            error_message = sanitize_exception_message(str(e), prepared.sensitive_query_param_names)
             logger.error(f"Failed to invoke A2A agent '{agent_name}': {error_message}")
             raise A2AAgentError(f"Failed to invoke A2A agent: {error_message}")
 

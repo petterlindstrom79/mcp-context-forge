@@ -77,11 +77,33 @@ class PreparedA2AInvocation:
     request_data: Dict[str, Any]
     protocol_version_header: str
     uses_jsonrpc: bool
+    sensitive_query_param_names: Optional[Dict[str, str]] = None
+
+
+def _strip_version_prefix(version: str) -> str:
+    """Strip a leading ``v`` or ``V`` prefix from a version string.
+
+    Args:
+        version: Raw version string, e.g. ``"v1.0.0"``.
+
+    Returns:
+        Version string without the leading prefix.
+    """
+    if version and version[0] in ("v", "V"):
+        return version[1:]
+    return version
 
 
 def is_v1_a2a_protocol(protocol_version: Optional[str]) -> bool:
-    """Return whether the configured protocol version should use A2A v1 semantics."""
-    normalized = str(protocol_version or "").strip()
+    """Return whether the configured protocol version should use A2A v1 semantics.
+
+    Args:
+        protocol_version: Protocol version string from the agent record (e.g. ``"1.0.0"``, ``"v1"``, ``"0.3"``).
+
+    Returns:
+        ``True`` when the major version is >= 1 or no version is configured (defaults to v1).
+    """
+    normalized = _strip_version_prefix(str(protocol_version or "").strip())
     if not normalized:
         return True
     parts = [part for part in normalized.split(".") if part != ""]
@@ -94,8 +116,15 @@ def is_v1_a2a_protocol(protocol_version: Optional[str]) -> bool:
 
 
 def normalize_a2a_version_header(protocol_version: Optional[str]) -> str:
-    """Return the canonical A2A-Version header value for the target protocol."""
-    normalized = str(protocol_version or "").strip()
+    """Return the canonical A2A-Version header value for the target protocol.
+
+    Args:
+        protocol_version: Protocol version string from the agent record.
+
+    Returns:
+        Canonical ``major.minor`` version string (e.g. ``"1.0"``).
+    """
+    normalized = _strip_version_prefix(str(protocol_version or "").strip())
     if not normalized:
         return _V1_DEFAULT_VERSION
 
@@ -110,12 +139,28 @@ def normalize_a2a_version_header(protocol_version: Optional[str]) -> str:
 
 
 def is_jsonrpc_a2a_agent(agent_type: Optional[str], endpoint_url: Optional[str]) -> bool:
-    """Return whether the registered agent should be invoked as JSON-RPC A2A."""
+    """Return whether the registered agent should be invoked as JSON-RPC A2A.
+
+    Args:
+        agent_type: Agent type string (e.g. ``"generic"``, ``"jsonrpc"``, ``"custom"``).
+        endpoint_url: Agent endpoint URL; a trailing ``/`` implies JSON-RPC.
+
+    Returns:
+        ``True`` when the agent type or URL indicates JSON-RPC transport.
+    """
     return str(agent_type or "").lower() in {"generic", "jsonrpc"} or str(endpoint_url or "").endswith("/")
 
 
 def normalize_a2a_method(method: Optional[str], protocol_version: Optional[str]) -> str:
-    """Map method names between A2A v0.3 and v1."""
+    """Map method names between A2A v0.3 and v1.
+
+    Args:
+        method: Candidate method name (e.g. ``"message/send"`` or ``"SendMessage"``).
+        protocol_version: Target protocol version.
+
+    Returns:
+        Method name in the correct form for the target protocol version.
+    """
     candidate = str(method or "").strip()
     if not candidate:
         return _V1_SEND_MESSAGE_METHOD if is_v1_a2a_protocol(protocol_version) else _LEGACY_SEND_MESSAGE_METHOD
@@ -126,7 +171,15 @@ def normalize_a2a_method(method: Optional[str], protocol_version: Optional[str])
 
 
 def _normalize_role(role: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A message role between v1 and legacy protocol forms."""
+    """Normalize an A2A message role between v1 and legacy protocol forms.
+
+    Args:
+        role: Role value (e.g. ``"user"`` or ``"ROLE_USER"``).
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized role value for the target protocol.
+    """
     value = str(role or "").strip()
     if not value:
         return role
@@ -136,7 +189,15 @@ def _normalize_role(role: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _normalize_part(part: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A message part between v1 and legacy protocol forms."""
+    """Normalize an A2A message part between v1 and legacy protocol forms.
+
+    Args:
+        part: A2A message part object or raw value.
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized part with ``kind`` added or removed per the target protocol.
+    """
     if not isinstance(part, Mapping):
         return part
 
@@ -161,7 +222,15 @@ def _normalize_part(part: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _normalize_task_state(state: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A task state between v1 and legacy protocol forms."""
+    """Normalize an A2A task state between v1 and legacy protocol forms.
+
+    Args:
+        state: Task state value (e.g. ``"completed"`` or ``"TASK_STATE_COMPLETED"``).
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized task state for the target protocol.
+    """
     value = str(state or "").strip()
     if not value:
         return state
@@ -171,7 +240,15 @@ def _normalize_task_state(state: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _normalize_message(message: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A message object for the target protocol version."""
+    """Normalize an A2A message object for the target protocol version.
+
+    Args:
+        message: A2A message object or raw value.
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized message with roles and parts adjusted for the target protocol.
+    """
     if not isinstance(message, Mapping):
         return message
 
@@ -188,7 +265,15 @@ def _normalize_message(message: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _normalize_task_status(status: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A task status for the target protocol version."""
+    """Normalize an A2A task status for the target protocol version.
+
+    Args:
+        status: Task status (string state, dict with ``state``/``message``, or raw value).
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized task status for the target protocol.
+    """
     if isinstance(status, str):
         return _normalize_task_state(status, protocol_version)
     if not isinstance(status, Mapping):
@@ -203,7 +288,15 @@ def _normalize_task_status(status: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _normalize_task(task: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize an A2A task object for the target protocol version."""
+    """Normalize an A2A task object for the target protocol version.
+
+    Args:
+        task: A2A task object or raw value.
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized task with status, history, and artifacts adjusted.
+    """
     if not isinstance(task, Mapping):
         return task
 
@@ -235,7 +328,15 @@ def _normalize_task(task: Any, protocol_version: Optional[str]) -> Any:
 
 
 def normalize_a2a_params(params: Any, protocol_version: Optional[str]) -> Any:
-    """Normalize A2A request params for the target protocol version."""
+    """Normalize A2A request params for the target protocol version.
+
+    Args:
+        params: A2A request params object or raw value.
+        protocol_version: Target protocol version.
+
+    Returns:
+        Normalized params with message, history, task, and status keys adjusted.
+    """
     if not isinstance(params, Mapping):
         return params
 
@@ -255,7 +356,16 @@ def normalize_a2a_params(params: Any, protocol_version: Optional[str]) -> Any:
 
 
 def _build_default_message(query: str, protocol_version: Optional[str], message_id: Optional[str] = None) -> Dict[str, Any]:
-    """Build a default user message in the appropriate protocol format."""
+    """Build a default user message in the appropriate protocol format.
+
+    Args:
+        query: User query text.
+        protocol_version: Target protocol version.
+        message_id: Optional explicit message ID; auto-generated when ``None``.
+
+    Returns:
+        A2A message dict with role, parts, and optional ``kind`` field.
+    """
     target_message_id = message_id or f"contextforge-{uuid.uuid4().hex}"
     if is_v1_a2a_protocol(protocol_version):
         return {
@@ -272,7 +382,16 @@ def _build_default_message(query: str, protocol_version: Optional[str], message_
 
 
 def build_a2a_jsonrpc_request(parameters: Dict[str, Any], protocol_version: Optional[str], *, interaction_type: str = "query") -> Dict[str, Any]:  # pylint: disable=unused-argument
-    """Build a JSON-RPC A2A request body for the target protocol version."""
+    """Build a JSON-RPC A2A request body for the target protocol version.
+
+    Args:
+        parameters: Caller-supplied parameters (may contain ``query``, ``text``, ``method``, ``params``, etc.).
+        protocol_version: Target protocol version.
+        interaction_type: Interaction type hint (reserved for future use).
+
+    Returns:
+        Complete JSON-RPC 2.0 request dict with normalized method and params.
+    """
     payload = dict(parameters or {})
     request_id = payload.pop("id", 1)
 
@@ -323,7 +442,26 @@ def prepare_a2a_invocation(
     base_headers: Optional[Mapping[str, str]] = None,
     correlation_id: Optional[str] = None,
 ) -> PreparedA2AInvocation:
-    """Prepare endpoint, headers, and request body for an outbound A2A invocation."""
+    """Prepare endpoint, headers, and request body for an outbound A2A invocation.
+
+    Args:
+        agent_type: Agent type (e.g. ``"generic"``, ``"jsonrpc"``, ``"custom"``).
+        endpoint_url: Agent HTTP endpoint URL.
+        protocol_version: Target A2A protocol version.
+        parameters: Caller-supplied invocation parameters.
+        interaction_type: Interaction type (e.g. ``"query"``).
+        auth_type: Authentication scheme (``"basic"``, ``"bearer"``, ``"api_key"``, ``"query_param"``, etc.).
+        auth_value: Encoded authentication value (string or mapping).
+        auth_query_params: Encrypted query-parameter auth entries keyed by param name.
+        base_headers: Additional headers to include in the outbound request.
+        correlation_id: Optional correlation ID for distributed tracing.
+
+    Returns:
+        PreparedA2AInvocation with resolved endpoint, headers, and body.
+
+    Raises:
+        ValueError: If a decoded authentication payload is not a mapping.
+    """
     headers = {str(key): str(value) for key, value in dict(base_headers or {}).items()}
     headers.setdefault("Content-Type", "application/json")
     if correlation_id:
@@ -350,7 +488,7 @@ def prepare_a2a_invocation(
             try:
                 decrypted = decode_auth(encrypted_value)
                 auth_query_params_decrypted[str(param_key)] = str(decrypted.get(param_key, ""))
-            except Exception:
+            except Exception:  # nosec B112
                 continue
         if auth_query_params_decrypted:
             target_endpoint_url = apply_query_param_auth(target_endpoint_url, auth_query_params_decrypted)
@@ -376,4 +514,5 @@ def prepare_a2a_invocation(
         request_data=request_data,
         protocol_version_header=protocol_version_header,
         uses_jsonrpc=uses_jsonrpc,
+        sensitive_query_param_names=auth_query_params_decrypted or None,
     )
