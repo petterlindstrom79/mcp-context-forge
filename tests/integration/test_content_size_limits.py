@@ -13,6 +13,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import status
 from _pytest.monkeypatch import MonkeyPatch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -134,11 +135,6 @@ def client(test_app):
 def auth_headers() -> dict[str, str]:
     """Dummy Bearer token accepted by the overridden dependency."""
     return {"Authorization": "Bearer test.token.size_limits"}
-
-
-
-import pytest
-from fastapi import status
 
 
 class TestResourceSizeLimits:
