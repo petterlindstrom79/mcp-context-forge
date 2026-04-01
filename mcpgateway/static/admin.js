@@ -9972,12 +9972,21 @@ function initToolSelect(
                         ? getSelectedGatewayIds()
                         : [];
                     const selectedTeamId = getCurrentTeamId();
+
+                    // Get active search term from the search input
+                    const searchInputId = selectId === "edit-server-tools" ? "searchEditTools" : "searchTools";
+                    const searchInput = document.getElementById(searchInputId);
+                    const searchTerm = searchInput ? searchInput.value.trim() : "";
+
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
                         params.set("gateway_id", selectedGatewayIds.join(","));
                     }
                     if (selectedTeamId) {
                         params.set("team_id", selectedTeamId);
+                    }
+                    if (searchTerm) {
+                        params.set("q", searchTerm);
                     }
                     const queryString = params.toString();
                     const response = await fetch(
@@ -10406,12 +10415,21 @@ function initResourceSelect(
                         ? getSelectedGatewayIds()
                         : [];
                     const selectedTeamId = getCurrentTeamId();
+                    
+                    // Get active search term from the search input
+                    const searchInputId = selectId === "edit-server-resources" ? "searchEditResources" : "searchResources";
+                    const searchInput = document.getElementById(searchInputId);
+                    const searchTerm = searchInput ? searchInput.value.trim() : "";
+                    
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
                         params.set("gateway_id", selectedGatewayIds.join(","));
                     }
                     if (selectedTeamId) {
                         params.set("team_id", selectedTeamId);
+                    }
+                    if (searchTerm) {
+                        params.set("q", searchTerm);
                     }
                     const queryString = params.toString();
                     const resp = await fetch(
@@ -10828,12 +10846,21 @@ function initPromptSelect(
                         ? getSelectedGatewayIds()
                         : [];
                     const selectedTeamId = getCurrentTeamId();
+                    
+                    // Get active search term from the search input
+                    const searchInputId = selectId === "edit-server-prompts" ? "searchEditPrompts" : "searchPrompts";
+                    const searchInput = document.getElementById(searchInputId);
+                    const searchTerm = searchInput ? searchInput.value.trim() : "";
+                    
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
                         params.set("gateway_id", selectedGatewayIds.join(","));
                     }
                     if (selectedTeamId) {
                         params.set("team_id", selectedTeamId);
+                    }
+                    if (searchTerm) {
+                        params.set("q", searchTerm);
                     }
                     const queryString = params.toString();
                     const resp = await fetch(
