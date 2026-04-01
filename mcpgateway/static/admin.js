@@ -9974,9 +9974,14 @@ function initToolSelect(
                     const selectedTeamId = getCurrentTeamId();
 
                     // Get active search term from the search input
-                    const searchInputId = selectId === "edit-server-tools" ? "searchEditTools" : "searchTools";
+                    const searchInputId =
+                        selectId === "edit-server-tools"
+                            ? "searchEditTools"
+                            : "searchTools";
                     const searchInput = document.getElementById(searchInputId);
-                    const searchTerm = searchInput ? searchInput.value.trim() : "";
+                    const searchTerm = searchInput
+                        ? searchInput.value.trim()
+                        : "";
 
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
@@ -10415,12 +10420,17 @@ function initResourceSelect(
                         ? getSelectedGatewayIds()
                         : [];
                     const selectedTeamId = getCurrentTeamId();
-                    
+
                     // Get active search term from the search input
-                    const searchInputId = selectId === "edit-server-resources" ? "searchEditResources" : "searchResources";
+                    const searchInputId =
+                        selectId === "edit-server-resources"
+                            ? "searchEditResources"
+                            : "searchResources";
                     const searchInput = document.getElementById(searchInputId);
-                    const searchTerm = searchInput ? searchInput.value.trim() : "";
-                    
+                    const searchTerm = searchInput
+                        ? searchInput.value.trim()
+                        : "";
+
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
                         params.set("gateway_id", selectedGatewayIds.join(","));
@@ -10846,12 +10856,17 @@ function initPromptSelect(
                         ? getSelectedGatewayIds()
                         : [];
                     const selectedTeamId = getCurrentTeamId();
-                    
+
                     // Get active search term from the search input
-                    const searchInputId = selectId === "edit-server-prompts" ? "searchEditPrompts" : "searchPrompts";
+                    const searchInputId =
+                        selectId === "edit-server-prompts"
+                            ? "searchEditPrompts"
+                            : "searchPrompts";
                     const searchInput = document.getElementById(searchInputId);
-                    const searchTerm = searchInput ? searchInput.value.trim() : "";
-                    
+                    const searchTerm = searchInput
+                        ? searchInput.value.trim()
+                        : "";
+
                     const params = new URLSearchParams();
                     if (selectedGatewayIds && selectedGatewayIds.length) {
                         params.set("gateway_id", selectedGatewayIds.join(","));
