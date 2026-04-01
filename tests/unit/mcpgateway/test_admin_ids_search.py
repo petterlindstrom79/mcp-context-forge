@@ -233,10 +233,10 @@ async def test_admin_get_all_prompt_ids_search_no_results(monkeypatch, mock_db):
 async def test_admin_get_all_tool_ids_search_case_insensitive(monkeypatch, mock_db):
     """Test that search query is case-insensitive."""
     setup_team_service(monkeypatch, [])
-    
+
     # Mock database to return results regardless of case
     mock_db.execute.return_value.all.return_value = [("tool-GIT-1",), ("tool-Git-2",)]
-    
+
     result = await admin_get_all_tool_ids(
         q="GIT",
         include_inactive=False,
@@ -255,10 +255,10 @@ async def test_admin_get_all_tool_ids_search_case_insensitive(monkeypatch, mock_
 async def test_admin_get_all_tool_ids_search_with_all_filters(monkeypatch, mock_db):
     """Test that search query works with gateway, team, and inactive filters combined."""
     setup_team_service(monkeypatch, ["team-1"])
-    
+
     # Mock database to return filtered results
     mock_db.execute.return_value.all.return_value = [("tool-git-gw1-team1",)]
-    
+
     result = await admin_get_all_tool_ids(
         q="git",
         include_inactive=True,
@@ -270,4 +270,3 @@ async def test_admin_get_all_tool_ids_search_with_all_filters(monkeypatch, mock_
 
     assert result["count"] == 1
     assert result["tool_ids"] == ["tool-git-gw1-team1"]
-
