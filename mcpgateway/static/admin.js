@@ -502,16 +502,15 @@ document.addEventListener("DOMContentLoaded", function () {
         "agents-table": "a2a-agents",
     };
 
-    // Re-initialize search inputs when HTMX content loads
-    // Only re-initialize if the swap affects search-related content
+    // Update available tags when HTMX content loads a table swap.
+    // Search inputs live outside the swapped table, so they do NOT need
+    // re-initialization here — doing so was causing an infinite loop
+    // (clone → set value → input event → reload → swap → repeat).
     document.body.addEventListener("htmx:afterSwap", function (event) {
         const targetId = event.detail.target && event.detail.target.id;
         if (targetId && tableToEntityType[targetId]) {
-            console.log(
-                `📝 HTMX swap detected in ${targetId}, resetting search state`,
-            );
-            resetSearchInputsState();
-            initializeSearchInputsDebounced();
+            console.log(`📝 HTMX swap detected in ${targetId}`);
+            updateFilterStatus();
         }
     });
 
@@ -8804,6 +8803,29 @@ function showTab(tabName) {
         const panel = safeGetElement(`${tabName}-panel`);
         if (panel) {
             panel.classList.remove("hidden");
+
+            // Reset scroll position on the main content area
+            // Use requestAnimationFrame to ensure DOM updates have completed
+            try {
+                requestAnimationFrame(() => {
+                    try {
+                        // Try data attribute first (most specific), fall back to class selector
+                        const mainContent =
+                            document.querySelector("[data-scroll-container]") ||
+                            document.querySelector("main.overflow-y-auto");
+                        if (mainContent) {
+                            mainContent.scrollTop = 0;
+                        }
+                    } catch (error) {
+                        console.debug(
+                            "Error resetting scroll position:",
+                            error,
+                        );
+                    }
+                });
+            } catch (error) {
+                console.debug("requestAnimationFrame not available:", error);
+            }
         } else {
             console.error(`Panel ${tabName}-panel not found`);
             const fallbackTab = getDefaultTabName();
@@ -9880,6 +9902,19 @@ function initToolSelect(
             } else {
                 warnBox.textContent = "";
             }
+
+            // Update the Select All button text to show count
+            // Re-query the button by ID to ensure we get the current button (not a stale reference)
+            if (selectBtnId) {
+                const currentSelectBtn = document.getElementById(selectBtnId);
+                if (currentSelectBtn) {
+                    if (count > 0) {
+                        currentSelectBtn.textContent = `Select All (${count})`;
+                    } else {
+                        currentSelectBtn.textContent = "Select All";
+                    }
+                }
+            }
         } catch (error) {
             console.error("Error updating tool select:", error);
         }
@@ -9927,7 +9962,6 @@ function initToolSelect(
 
         newSelectBtn.addEventListener("click", async () => {
             // Disable button and show loading state
-            const originalText = newSelectBtn.textContent;
             newSelectBtn.disabled = true;
             newSelectBtn.textContent = "Selecting all tools...";
 
@@ -10010,16 +10044,11 @@ function initToolSelect(
                 allToolIds.forEach((id) => editSel.add(String(id)));
 
                 update();
-
-                newSelectBtn.textContent = `✓ All ${allToolIds.length} tools selected`;
-                setTimeout(() => {
-                    newSelectBtn.textContent = originalText;
-                }, 2000);
             } catch (error) {
                 console.error("Error in Select All:", error);
                 alert("Failed to select all tools. Please try again.");
                 newSelectBtn.disabled = false;
-                newSelectBtn.textContent = originalText;
+                update(); // Reset button text via update()
             } finally {
                 newSelectBtn.disabled = false;
             }
@@ -10309,6 +10338,18 @@ function initResourceSelect(
             } else {
                 warnBox.textContent = "";
             }
+
+            // Update the Select All button text to show count
+            if (selectBtnId) {
+                const currentSelectBtn = document.getElementById(selectBtnId);
+                if (currentSelectBtn) {
+                    if (count > 0) {
+                        currentSelectBtn.textContent = `Select All (${count})`;
+                    } else {
+                        currentSelectBtn.textContent = "Select All";
+                    }
+                }
+            }
         } catch (error) {
             console.error("Error updating resource select:", error);
         }
@@ -10355,7 +10396,6 @@ function initResourceSelect(
         selectBtn.parentNode.replaceChild(newSelectBtn, selectBtn);
 
         newSelectBtn.addEventListener("click", async () => {
-            const originalText = newSelectBtn.textContent;
             newSelectBtn.disabled = true;
             newSelectBtn.textContent = "Selecting all resources...";
 
@@ -10438,14 +10478,11 @@ function initResourceSelect(
                 allIds.forEach((id) => editSel.add(String(id)));
 
                 update();
-
-                newSelectBtn.textContent = `✓ All ${allIds.length} resources selected`;
-                setTimeout(() => {
-                    newSelectBtn.textContent = originalText;
-                }, 2000);
             } catch (error) {
                 console.error("Error selecting all resources:", error);
                 alert("Failed to select all resources. Please try again.");
+                newSelectBtn.disabled = false;
+                update(); // Reset button text via update()
             } finally {
                 newSelectBtn.disabled = false;
             }
@@ -10724,6 +10761,18 @@ function initPromptSelect(
             } else {
                 warnBox.textContent = "";
             }
+
+            // Update the Select All button text to show count
+            if (selectBtnId) {
+                const currentSelectBtn = document.getElementById(selectBtnId);
+                if (currentSelectBtn) {
+                    if (count > 0) {
+                        currentSelectBtn.textContent = `Select All (${count})`;
+                    } else {
+                        currentSelectBtn.textContent = "Select All";
+                    }
+                }
+            }
         } catch (error) {
             console.error("Error updating prompt select:", error);
         }
@@ -10769,7 +10818,6 @@ function initPromptSelect(
         newSelectBtn.dataset.listenerAttached = "true";
         selectBtn.parentNode.replaceChild(newSelectBtn, selectBtn);
         newSelectBtn.addEventListener("click", async () => {
-            const originalText = newSelectBtn.textContent;
             newSelectBtn.disabled = true;
             newSelectBtn.textContent = "Selecting all prompts...";
 
@@ -10852,14 +10900,11 @@ function initPromptSelect(
                 allIds.forEach((id) => editSel.add(String(id)));
 
                 update();
-
-                newSelectBtn.textContent = `✓ All ${allIds.length} prompts selected`;
-                setTimeout(() => {
-                    newSelectBtn.textContent = originalText;
-                }, 2000);
             } catch (error) {
                 console.error("Error selecting all prompts:", error);
                 alert("Failed to select all prompts. Please try again.");
+                newSelectBtn.disabled = false;
+                update(); // Reset button text via update()
             } finally {
                 newSelectBtn.disabled = false;
             }
@@ -11118,6 +11163,18 @@ function initGatewaySelect(
             } else {
                 warnBox.textContent = "";
             }
+
+            // Update the Select All button text to show count
+            if (selectBtnId) {
+                const currentSelectBtn = document.getElementById(selectBtnId);
+                if (currentSelectBtn) {
+                    if (count > 0) {
+                        currentSelectBtn.textContent = `Select All (${count})`;
+                    } else {
+                        currentSelectBtn.textContent = "Select All";
+                    }
+                }
+            }
         } catch (error) {
             console.error("Error updating gateway select:", error);
         }
@@ -11165,7 +11222,6 @@ function initGatewaySelect(
 
         newSelectBtn.addEventListener("click", async () => {
             // Disable button and show loading state
-            const originalText = newSelectBtn.textContent;
             newSelectBtn.disabled = true;
             newSelectBtn.textContent = "Selecting all gateways...";
 
@@ -11258,18 +11314,13 @@ function initGatewaySelect(
 
                 update();
 
-                newSelectBtn.textContent = `✓ All ${allGatewayIds.length} gateways selected`;
-                setTimeout(() => {
-                    newSelectBtn.textContent = originalText;
-                }, 2000);
-
                 // Reload associated items after selecting all
                 reloadAssociatedItems();
             } catch (error) {
                 console.error("Error in Select All:", error);
                 alert("Failed to select all gateways. Please try again.");
                 newSelectBtn.disabled = false;
-                newSelectBtn.textContent = originalText;
+                update(); // Reset button text via update()
             } finally {
                 newSelectBtn.disabled = false;
             }
@@ -18908,8 +18959,8 @@ function clearSearch(entityType) {
 window.clearSearch = clearSearch;
 
 /**
- * Initialize search inputs for all entity types
- * This function also handles re-initialization after HTMX content loads
+ * Initialize search inputs for all entity types.
+ * Called once on page load; HTMX swap/settle handlers no longer re-invoke this.
  */
 function initializeSearchInputs() {
     console.log("🔍 Initializing search inputs...");
@@ -18932,22 +18983,26 @@ function initializeSearchInputs() {
         }
 
         const searchState = getPanelSearchStateFromUrl(panelConfig.tableName);
-        if (searchState.query) {
+
+        // Set values BEFORE attaching event listener so that the subsequent
+        // addEventListener("input", ...) doesn't exist yet during value restore.
+        // The real loop was: afterSwap reset+reinit → cloneNode → eager reload → swap → repeat.
+        if (searchState.query && searchInput.value !== searchState.query) {
             searchInput.value = searchState.query;
         }
-        if (tagInput && searchState.tags) {
+
+        if (
+            tagInput &&
+            searchState.tags &&
+            tagInput.value !== searchState.tags
+        ) {
             tagInput.value = searchState.tags;
         }
 
+        // Attach event listener AFTER setting value so initialization doesn't trigger reload
         searchInput.addEventListener("input", () => {
             queueSearchablePanelReload(entityType, 250);
         });
-
-        const panel = document.getElementById(`${entityType}-panel`);
-        const isVisible = Boolean(panel && !panel.classList.contains("hidden"));
-        if (isVisible && (searchState.query || searchState.tags)) {
-            queueSearchablePanelReload(entityType, 0);
-        }
     });
 
     // Tokens search (server-side, not part of PANEL_SEARCH_CONFIG)
@@ -19017,8 +19072,8 @@ document.addEventListener("htmx:afterSettle", function (evt) {
     const isPaginationSwap = target.id.endsWith("-pagination-controls");
 
     if (isTableSwap || isPaginationSwap) {
-        resetSearchInputsState();
-        initializeSearchInputsMemoized();
+        // Search inputs live outside the swapped table content, so they
+        // persist across partial refreshes. Only update filter status UI.
         updateFilterStatus();
     }
 });
@@ -21980,16 +22035,11 @@ async function handleA2ATestSubmit(e) {
             throw new Error("Agent ID is missing");
         }
 
-        // Get auth token
-        const token = await getAuthToken();
-        const headers = { "Content-Type": "application/json" };
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        } else {
-            // Fallback to basic auth if JWT not available
-            console.warn("JWT token not found, attempting basic auth fallback");
-            headers.Authorization = "Basic " + btoa("admin:changeme");
-        }
+        // Reuse the standard admin auth helper:
+        // - sends Bearer auth when a JS-readable token exists
+        // - otherwise relies on same-origin cookie auth
+        // Never synthesize default credentials client-side.
+        const headers = await getAuthHeaders(true);
 
         // Send test request with user query
         const response = await fetchWithTimeout(
@@ -23524,6 +23574,8 @@ async function showTeamEditModal(teamId) {
 
 function hideTeamEditModal() {
     document.getElementById("team-edit-modal").classList.add("hidden");
+    const content = document.getElementById("team-edit-modal-content");
+    if (content) content.innerHTML = "";
 }
 
 // Expose team modal functions to global scope

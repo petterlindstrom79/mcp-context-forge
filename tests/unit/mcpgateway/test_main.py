@@ -649,6 +649,20 @@ class TestProtocolEndpoints:
     @patch("mcpgateway.main.cancellation_service.get_status", new_callable=AsyncMock)
     @patch("mcpgateway.main.cancellation_service.cancel_run", new_callable=AsyncMock)
     @patch("mcpgateway.main.logging_service.notify", new_callable=AsyncMock)
+    def test_handle_notification_cancelled_accepts_unknown_run_as_noop(self, mock_notify, mock_cancel_run, mock_get_status, mock_get_context, test_client, auth_headers):
+        """Unknown cancellation notifications should be accepted as best-effort no-ops."""
+        mock_get_context.return_value = ("viewer@example.com", [], False)
+        mock_get_status.return_value = None
+        req = {"method": "notifications/cancelled", "params": {"requestId": "unknown-run"}}
+        response = test_client.post("/protocol/notifications", json=req, headers=auth_headers)
+        assert response.status_code == 200
+        mock_cancel_run.assert_awaited_once_with("unknown-run", reason=None)
+        mock_notify.assert_awaited_once()
+
+    @patch("mcpgateway.main._get_rpc_filter_context")
+    @patch("mcpgateway.main.cancellation_service.get_status", new_callable=AsyncMock)
+    @patch("mcpgateway.main.cancellation_service.cancel_run", new_callable=AsyncMock)
+    @patch("mcpgateway.main.logging_service.notify", new_callable=AsyncMock)
     def test_handle_notification_alias_cancelled_enforces_authorization(self, mock_notify, mock_cancel_run, mock_get_status, mock_get_context, test_client, auth_headers):
         """The /notifications alias must enforce the same cancellation authorization rules."""
         mock_get_context.return_value = ("viewer@example.com", [], False)
@@ -2550,12 +2564,29 @@ class TestRealtimeEndpoints:
         """Server message endpoint should fail closed when owner metadata is unknown."""
         message = {"type": "test", "data": "hello"}
         with (
+            patch("mcpgateway.services.server_service.ServerService.entity_exists", new=AsyncMock(return_value=True)),
             patch("mcpgateway.main.session_registry.get_session_owner", new=AsyncMock(return_value=None)),
             patch("mcpgateway.main.session_registry.session_exists", new=AsyncMock(return_value=True)),
         ):
             response = test_client.post("/servers/test-server/message?session_id=test-session", json=message, headers=auth_headers)
         assert response.status_code == 403
         assert response.json()["detail"] == "Session owner metadata unavailable"
+
+    def test_server_message_endpoint_rejects_nonexistent_server(self, test_client, auth_headers):
+        """Server message endpoint returns 404 for non-existent server IDs."""
+        message = {"type": "test", "data": "hello"}
+        with patch("mcpgateway.services.server_service.ServerService.entity_exists", new=AsyncMock(return_value=False)):
+            response = test_client.post("/servers/nonexistent-id/message?session_id=test-session", json=message, headers=auth_headers)
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Server not found"
+
+    def test_server_message_endpoint_returns_503_on_db_error(self, test_client, auth_headers):
+        """Server message endpoint returns 503 when database validation fails (fail-closed)."""
+        message = {"type": "test", "data": "hello"}
+        with patch("mcpgateway.services.server_service.ServerService.entity_exists", new=AsyncMock(side_effect=Exception("DB down"))):
+            response = test_client.post("/servers/test-server/message?session_id=test-session", json=message, headers=auth_headers)
+        assert response.status_code == 503
+        assert "unable to verify server" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_websocket_forwards_auth_token_to_rpc(self, monkeypatch):
@@ -3358,11 +3389,7 @@ class TestPluginExceptionHandlers:
 
     def test_plugin_violation_exception_handler_without_violation_object(self):
         """Test plugin_violation_exception_handler when violation object is None."""
-        # Standard
-        import asyncio
-
         # First-Party
-        from mcpgateway.main import plugin_violation_exception_handler
         from mcpgateway.plugins.framework.errors import PluginViolationError
 
         exc = PluginViolationError(message="Generic plugin violation", violation=None)
@@ -4191,9 +4218,6 @@ class _InjectRequestState:
 
 def _make_team_scoped_client(app_fixture, token_teams, team_id):
     """Create a TestClient with injected token_teams and team_id on request.state."""
-    # Standard
-    from unittest.mock import patch
-
     # First-Party
     from mcpgateway.auth import get_current_user
     from mcpgateway.db import EmailUser
